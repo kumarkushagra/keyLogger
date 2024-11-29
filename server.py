@@ -4,7 +4,7 @@ import os
 
 app = FastAPI()
 
-# Configuration for the directory
+# Configuration
 SAVE_DIR = "Logs"  # Directory to store logs
 MAX_SIZE = 10 * 1024 * 1024  # 10MB per log file
 
@@ -48,5 +48,4 @@ async def receive_logs(data: LogData):
 
 if __name__ == "__main__":
     import uvicorn
-    # Don't specify host and port. Railway will handle it
-    uvicorn.run(app)
+    uvicorn.run(app, port=5000)
