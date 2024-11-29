@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import PlainTextResponse
 import os
 
 app = FastAPI()
@@ -51,6 +52,20 @@ async def receive_logs(data: LogData):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/logs/{user_name}", response_class=PlainTextResponse)
+async def get_logs(user_name: str):
+    user_file = os.path.join(SAVE_DIR, f"{user_name}.txt")
+    if not os.path.exists(user_file):
+        raise HTTPException(status_code=404, detail="Log file not found")
+    try:
+        with open(user_file, "r") as f:
+            content = f.read()
+        return content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error reading log file")
+
 
 if __name__ == "__main__":
     import uvicorn
