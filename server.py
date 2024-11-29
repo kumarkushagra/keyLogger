@@ -25,14 +25,14 @@ async def receive_logs(data: LogData):
     if not logs.strip():
         raise HTTPException(status_code=400, detail="No logs received")
 
-    # Create user-specific log file if it doesn't exist
+    # Create user-specific log file path
     user_file = os.path.join(SAVE_DIR, f"{user_name}.txt")
-    if not os.path.exists(user_file):
-        try:
-            with open(user_file, "w") as f:
-                f.write("")  # Create an empty file if it doesn't exist
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error creating user file")
+
+    # Read existing content (if file exists)
+    old_content = ""
+    if os.path.exists(user_file):
+        with open(user_file, "r") as f:
+            old_content = f.read()
 
     # Check if the log file size exceeds MAX_SIZE
     if os.path.exists(user_file) and os.path.getsize(user_file) > MAX_SIZE:
@@ -42,7 +42,13 @@ async def receive_logs(data: LogData):
     try:
         with open(user_file, "a") as f:
             f.write(logs + "\n")
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "file_name": f"{user_name}.txt",
+            "old_content": old_content,
+            "new_data": logs,
+            "message": "Successfully appended"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
