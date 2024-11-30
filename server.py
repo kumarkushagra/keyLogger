@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import os
 
 app = FastAPI()
@@ -11,44 +12,41 @@ MAX_SIZE = 10 * 1024 * 1024  # 10MB per log file
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
+# Pydantic model to handle incoming log data
+class LogData(BaseModel):
+    logs: str
+    user_name: str  # User name (or target name)
 
 @app.post("/logs")
-async def upload_log(file: UploadFile = File(...)):
+async def receive_logs(data: LogData):
+    logs = data.logs
+    user_name = data.user_name
+
+    if not logs.strip():
+        raise HTTPException(status_code=400, detail="No logs received")
+
+    # Create user-specific log file if it doesn't exist
+    user_file = os.path.join(SAVE_DIR, f"{user_name}.txt")
+    if not os.path.exists(user_file):
+        try:
+            with open(user_file, "w") as f:
+                f.write("")  # Create an empty file
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error creating user file: {e}")
+
+    # Check if the log file size exceeds MAX_SIZE
+    if os.path.exists(user_file) and os.path.getsize(user_file) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="User log file size exceeded")
+
+    # Append received logs to the user-specific log file
     try:
-        # Get target name from file
-        target_name = file.filename
-        
-        if not target_name:
-            raise HTTPException(status_code=400, detail="Invalid file name")
-        
-        # Determine target file path
-        target_file_path = os.path.join(SAVE_DIR, target_name)
-        
-        # Read uploaded file data
-        data = await file.read()
-
-        if len(data) == 0:
-            raise HTTPException(status_code=400, detail="Empty file uploaded")
-
-        # Check if the file already exists
-        if os.path.exists(target_file_path):
-            # Check if size exceeds limit
-            if os.path.getsize(target_file_path) > MAX_SIZE:
-                raise HTTPException(status_code=400, detail="Target file size exceeded")
-            
-            # Append data to the existing file
-            with open(target_file_path, "ab") as f:
-                f.write(data)
-            return {"status": "success", "message": f"Appended data to {target_name}"}
-        else:
-            # Create a new target file and write data
-            with open(target_file_path, "wb") as f:
-                f.write(data)
-            return {"status": "success", "message": f"Created new target {target_name} and added data"}
+        with open(user_file, "a") as f:
+            f.write(logs + "\n")
+        return {"status": "success", "message": f"Appended logs to {user_name}.txt"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, port=5000)  # Port set to 5000
+    uvicorn.run(app, port=5000)

