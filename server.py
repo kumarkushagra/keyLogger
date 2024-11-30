@@ -21,6 +21,8 @@ class LogData(BaseModel):
 # Utility function to parse raw key logs
 from datetime import datetime
 
+from datetime import datetime, timedelta
+
 def parse_logs(raw_logs: str) -> str:
     key_mapping = {
         "Key.space": " ",
@@ -59,7 +61,8 @@ def parse_logs(raw_logs: str) -> str:
     }
 
     readable_logs = []
-    key_count = 0  # Keep track of the number of keys
+    last_timestamp = datetime.now()
+    key_count = 0
 
     # Split the raw logs into lines
     for log in raw_logs.splitlines():
@@ -71,10 +74,19 @@ def parse_logs(raw_logs: str) -> str:
 
         key_count += 1
 
-        # Add a timestamp after every 10 keys or after a key event like Enter
-        if key_count % 10 == 0 or "[ENTER]" in readable_logs[-1]:
+        # Check if it's time for a timestamp
+        time_diff = datetime.now() - last_timestamp
+        if time_diff >= timedelta(minutes=1):  # Add timestamp every minute
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            readable_logs.append(f" [{timestamp}]")  # Add timestamp after every 10 keys or Enter
+            readable_logs.append(f"[{timestamp}]")  # Add timestamp at the beginning
+
+            # Update the last timestamp to the current time
+            last_timestamp = datetime.now()
+
+        # Add timestamp if the ENTER key is pressed
+        if "[ENTER]" in readable_logs[-1]:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            readable_logs.insert(-1, f"[{timestamp}]")  # Add timestamp before the Enter key
 
     # Join the logs into a single string for output
     return "".join(readable_logs)
