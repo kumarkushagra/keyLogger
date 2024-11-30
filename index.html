@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keylogger Viewer</title>
+    <script>
+        async function loadTargets() {
+            const response = await fetch("/targets");
+            const data = await response.json();
+            const dropdown = document.getElementById("targets");
+
+            // Populate dropdown
+            data.targets.forEach(target => {
+                const option = document.createElement("option");
+                option.value = target;
+                option.textContent = target;
+                dropdown.appendChild(option);
+            });
+        }
+
+        async function loadLogs() {
+            const target = document.getElementById("targets").value;
+            if (!target) return;
+
+            const response = await fetch(`/logs/${target}`);
+            const data = await response.json();
+
+            // Display logs
+            document.getElementById("logs").textContent = data.logs || "No logs available.";
+        }
+
+        // Load targets on page load
+        window.onload = loadTargets;
+    </script>
+</head>
+<body>
+    <h1>Keylogger Viewer</h1>
+    <label for="targets">Select Target:</label>
+    <select id="targets" onchange="loadLogs()">
+        <option value="" selected>Select a target</option>
+    </select>
+    <h2>Logs:</h2>
+    <pre id="logs">Select a target to view logs.</pre>
+</body>
+</html>
