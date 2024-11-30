@@ -65,6 +65,21 @@ async def get_logs(target_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading log file: {str(e)}")
 
+@app.post("/logs")
+async def post_logs(log_data: LogData):
+    """Receives logs and stores them in the respective log file."""
+    try:
+        # Create a log file based on the user_name if it doesn't exist
+        user_file = os.path.join(SAVE_DIR, f"{log_data.user_name}.txt")
+
+        # Append the new logs to the file
+        with open(user_file, "a") as f:
+            f.write(log_data.logs + "\n")
+
+        return {"message": "Logs received and saved successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving logs: {str(e)}")
+
 @app.get("/")
 async def main():
     """Serves the HTML page."""
